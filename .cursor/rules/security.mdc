@@ -1,0 +1,40 @@
+---
+alwaysApply: true
+---
+
+# Diretrizes de Segurança e Arquitetura - Sistema SaaS de Refrigeração e Chopeiras
+
+## 1. Isolamento Multitenant (Rigoroso)
+- **Tenant Scope:** Todas as consultas e mutações ao banco de dados DEVEM ser escopadas pelo `tenant_id` (Empresa de Manutenção).
+- **Vazamento de Dados:** Um cliente SaaS jamais pode visualizar ou alterar dados de outro cliente SaaS.
+- **Validação de Payload:** Valide se os IDs de técnicos, equipamentos, peças e rotas pertencem ao `tenant_id` autenticado na requisição antes de processar qualquer alteração.
+
+## 2. Controle de Acesso Baseado em Funções (RBAC)
+
+### Super Admin (Gestão Central SaaS)
+- **Acesso:** Exclusivo para cadastro de tenants, bloqueio/liberação de acesso SaaS e gestão das mensalidades.
+- **Isolamento de Negócio:** O Super Admin não deve acessar os dados operacionais internos das empresas (OSs, clientes dos clientes, rotas), apenas o status de conta e cobrança.
+- **Financeiro SaaS:** Exibir alertas de inadimplência e disponibilizar a chave PIX estática/dinâmica (`02520340312`) para quitação.
+
+### Gestor da Empresa (Tenant Admin)
+- **Acesso:** Total sobre o seu `tenant_id`.
+- **Permissões:** Gestão de equipe de técnicos, cadastro de clientes/PDVs, rotas, relatórios e gráficos de produtividade.
+
+### Técnico (App Mobile)
+- **Acesso Limitado:** O técnico só pode visualizar as rotas e ordens de serviço atribuídas a ele no dia ou período ativo.
+- **Cadastro Dinâmico:** Permitir a criação de novos equipamentos e inclusão de novas peças apenas no contexto da OS ativa.
+- **Proteção de Registros:** Uma vez efetuado o Check-out (Passo 7), a OS e os registros de tempo (Check-in até Check-out) tornam-se imutáveis para o técnico. Alterações posteriores exigem permissão explícita do Gestor.
+
+## 3. Segurança Financeira e Pagamentos PIX
+- **Notificações:** O status de cobrança do tenant deve ser verificado a cada requisição restrita do Gestor.
+- **Bloqueio Gradual:** Exibir avisos de vencimento na tela do Gestor antes do bloqueio definitivo.
+- **Geração do QR Code PIX:** Garantir a sanitização e validação dos payloads ao gerar cobranças PIX dinâmicas para evitar manipulação de valores ou chave de destino.
+
+## 4. Validação de Dados e Métricas de Tempo
+- **Integridade do Tempo:** O cálculo do tempo de atendimento (Check-in ao Check-out) deve ser realizado no servidor (server-side) usando timestamps confiáveis, impedindo a manipulação do horário do dispositivo móvel.
+- **Sanitização de Inputs:** Validar e sanitizar novos cadastros em tempo real efetuados pelo técnico no app (novas peças, nomes de equipamentos e especificações técnicas como voltagem e tipo de gás refrigerante).
+
+## 5. Práticas Gerais de Código
+- Nunca utilize seleções abertas sem filtro de tenant (`SELECT * FROM table` sem `WHERE tenant_id = ...`).
+- Implemente validações rigorosas em todas as rotas da API (usando Zod, Yup ou equivalente).
+- Proteja dados sensíveis e credenciais em variáveis de ambiente (`.env`), nunca expostas no código fonte.

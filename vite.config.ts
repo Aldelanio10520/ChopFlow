@@ -46,4 +46,12 @@ export default defineConfig({
     preset: "vercel",
   },
   plugins: [supabaseEnvAlias()],
+  vite: {
+    ssr: {
+      noExternal: true,
+    },
+    build: {
+      target: "es2022",
+    },
+  },
 });

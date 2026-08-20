@@ -1,4 +1,4 @@
-chopeirasimport { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Beer, Route as RouteIcon, BarChart3, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";

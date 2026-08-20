@@ -56,6 +56,7 @@ export function useAuth() {
     queryKey: ["session-info"],
     queryFn: fetchSessionInfo,
     staleTime: 30_000,
+    enabled: typeof window !== "undefined",
   });
 }
 

@@ -12,4 +12,9 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Pin Vercel output when deploying outside Lovable. Lovable Cloud still uses
+  // LOVABLE_NITRO_PRESET (Cloudflare) and ignores this override.
+  nitro: {
+    preset: "vercel",
+  },
 });

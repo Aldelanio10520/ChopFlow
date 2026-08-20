@@ -25,7 +25,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { data: session, isLoading } = useAuth();
+  const { data: session } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -53,7 +53,7 @@ function Index() {
           </p>
           <div className="flex flex-wrap gap-3">
             <Button asChild size="lg">
-              <Link to="/auth">{isLoading ? "Carregando..." : "Entrar no sistema"}</Link>
+              <Link to="/auth">Entrar no sistema</Link>
             </Button>
           </div>
         </section>

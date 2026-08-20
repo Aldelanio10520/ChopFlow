@@ -38,13 +38,13 @@ function Equipe() {
     queryKey: ["team", companyId],
     enabled: !!companyId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("company_id", companyId!)
-        .order("full_name");
+      const [{ data, error }, { data: roles }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("company_id", companyId!).order("full_name"),
+        supabase.from("user_roles").select("user_id,role").eq("role", "tecnico"),
+      ]);
       if (error) throw error;
-      return data ?? [];
+      const techIds = new Set((roles ?? []).map((r) => r.user_id));
+      return (data ?? []).filter((member) => techIds.has(member.id));
     },
   });
 

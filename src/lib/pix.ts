@@ -30,9 +30,10 @@ export function buildPixPayload(opts: {
   amount?: number;
   description?: string;
 }) {
+  const key = opts.key.replace(/[\u0000-\u001F\u007F]/g, "").trim().slice(0, 77);
   const merchant =
     field("00", "br.gov.bcb.pix") +
-    field("01", opts.key) +
+    field("01", key) +
     (opts.description ? field("02", sanitize(opts.description, 40)) : "");
 
   let payload =

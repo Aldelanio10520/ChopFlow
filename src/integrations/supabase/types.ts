@@ -76,6 +76,7 @@ export type Database = {
       }
       customers: {
         Row: {
+          active: boolean
           address: string | null
           city: string | null
           company_id: string
@@ -90,6 +91,7 @@ export type Database = {
           zip: string | null
         }
         Insert: {
+          active?: boolean
           address?: string | null
           city?: string | null
           company_id: string
@@ -104,6 +106,7 @@ export type Database = {
           zip?: string | null
         }
         Update: {
+          active?: boolean
           address?: string | null
           city?: string | null
           company_id?: string
@@ -137,6 +140,7 @@ export type Database = {
           id: string
           model: string | null
           notes: string | null
+          qr_token: string
           refrigerant: string | null
           serial_number: string | null
           taps: number | null
@@ -152,6 +156,7 @@ export type Database = {
           id?: string
           model?: string | null
           notes?: string | null
+          qr_token?: string
           refrigerant?: string | null
           serial_number?: string | null
           taps?: number | null
@@ -167,6 +172,7 @@ export type Database = {
           id?: string
           model?: string | null
           notes?: string | null
+          qr_token?: string
           refrigerant?: string | null
           serial_number?: string | null
           taps?: number | null
@@ -186,6 +192,72 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_transfers: {
+        Row: {
+          company_id: string
+          created_at: string
+          equipment_id: string
+          from_customer_id: string
+          id: string
+          to_customer_id: string
+          transferred_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          equipment_id: string
+          from_customer_id: string
+          id?: string
+          to_customer_id: string
+          transferred_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          equipment_id?: string
+          from_customer_id?: string
+          id?: string
+          to_customer_id?: string
+          transferred_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_transfers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_transfers_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_transfers_from_customer_id_fkey"
+            columns: ["from_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_transfers_to_customer_id_fkey"
+            columns: ["to_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_transfers_transferred_by_fkey"
+            columns: ["transferred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -335,7 +407,7 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "routes_technician_fkey"
+            foreignKeyName: "routes_technician_id_fkey"
             columns: ["technician_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -487,6 +559,52 @@ export type Database = {
           },
         ]
       }
+      work_order_equipments: {
+        Row: {
+          company_id: string
+          created_at: string
+          equipment_id: string
+          id: string
+          work_order_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          equipment_id: string
+          id?: string
+          work_order_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          equipment_id?: string
+          id?: string
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_order_equipments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_equipments_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_equipments_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_orders: {
         Row: {
           checkin_at: string | null
@@ -588,7 +706,7 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "work_orders_technician_fkey"
+            foreignKeyName: "work_orders_technician_id_fkey"
             columns: ["technician_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -601,6 +719,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      company_is_active: { Args: never; Returns: boolean }
       current_company_id: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -609,7 +728,9 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_gestor: { Args: never; Returns: boolean }
       is_manager: { Args: never; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
       super_admin_exists: { Args: never; Returns: boolean }
     }
     Enums: {

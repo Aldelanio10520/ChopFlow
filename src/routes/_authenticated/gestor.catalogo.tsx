@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { KIND_LABEL } from "@/lib/format";
+import { partSchema, serviceSchema } from "@/lib/schemas";
 
 export const Route = createFileRoute("/_authenticated/gestor/catalogo")({
   component: Catalogo,
@@ -49,9 +50,14 @@ function Catalogo() {
   const addService = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!companyId) return;
+    const parsed = serviceSchema.safeParse({ name: serviceName, kind: serviceKind });
+    if (!parsed.success) {
+      toast.error("Informe um nome de serviço válido.");
+      return;
+    }
     const { error } = await supabase
       .from("services")
-      .insert({ company_id: companyId, name: serviceName, kind: serviceKind });
+      .insert({ company_id: companyId, name: parsed.data.name, kind: parsed.data.kind });
     if (error) {
       toast.error(error.message);
       return;
@@ -64,9 +70,14 @@ function Catalogo() {
   const addPart = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!companyId) return;
+    const parsed = partSchema.safeParse({ name: partName, unit: partUnit });
+    if (!parsed.success) {
+      toast.error("Informe um nome de peça válido.");
+      return;
+    }
     const { error } = await supabase
       .from("parts")
-      .insert({ company_id: companyId, name: partName, unit: partUnit });
+      .insert({ company_id: companyId, name: parsed.data.name, unit: parsed.data.unit });
     if (error) {
       toast.error(error.message);
       return;

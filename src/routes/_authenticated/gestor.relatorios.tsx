@@ -25,6 +25,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { EquipmentLifeSheet } from "@/components/EquipmentLifeSheet";
 
 export const Route = createFileRoute("/_authenticated/gestor/relatorios")({
   component: Relatorios,
@@ -47,7 +49,22 @@ function Relatorios() {
   const { data: session } = useAuth();
   const companyId = session?.companyId ?? null;
   const [period, setPeriod] = useState("mes-0");
+  const [equipTerm, setEquipTerm] = useState("");
+  const [selectedEquipId, setSelectedEquipId] = useState<string | null>(null);
   const range = periodRange(period);
+
+  const { data: equipments } = useQuery({
+    queryKey: ["report-equipments", companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("equipments")
+        .select("id, type, brand, model, serial_number, customers(name)")
+        .order("serial_number");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const { data: orders } = useQuery({
     queryKey: ["report-orders", companyId, period],
@@ -55,7 +72,7 @@ function Relatorios() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("work_orders")
-        .select("*, customers(name), profiles:technician_id(full_name), work_order_parts(quantity, parts(name))")
+        .select("*, customers(name), profiles!technician_id(full_name), work_order_parts(quantity, parts(name))")
         .gte("scheduled_date", range.start)
         .lte("scheduled_date", range.end);
       if (error) throw error;
@@ -64,6 +81,17 @@ function Relatorios() {
   });
 
   const list = orders ?? [];
+  const filteredEquipments = useMemo(() => {
+    const term = equipTerm.trim().toLowerCase();
+    return (equipments ?? []).filter((eq) => {
+      if (!term) return true;
+      return [eq.type, eq.brand, eq.model, eq.serial_number, (eq.customers as { name: string } | null)?.name]
+        .join(" ")
+        .toLowerCase()
+        .includes(term);
+    });
+  }, [equipments, equipTerm]);
+  const selectedEquip = (equipments ?? []).find((eq) => eq.id === selectedEquipId) ?? null;
 
   const stats = useMemo(() => {
     const done = list.filter((o) => o.status === "concluido");
@@ -159,11 +187,12 @@ function Relatorios() {
       </div>
 
       <Tabs defaultValue="volume">
-        <TabsList className="w-full">
-          <TabsTrigger value="volume" className="flex-1">Volume</TabsTrigger>
-          <TabsTrigger value="tecnicos" className="flex-1">Técnicos</TabsTrigger>
-          <TabsTrigger value="pecas" className="flex-1">Peças</TabsTrigger>
-          <TabsTrigger value="historico" className="flex-1">Histórico</TabsTrigger>
+        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-5">
+          <TabsTrigger value="volume">Volume</TabsTrigger>
+          <TabsTrigger value="tecnicos">Técnicos</TabsTrigger>
+          <TabsTrigger value="pecas">Peças</TabsTrigger>
+          <TabsTrigger value="historico">Histórico</TabsTrigger>
+          <TabsTrigger value="equipamentos">Equipamentos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="volume" className="space-y-4 pt-4">
@@ -266,6 +295,54 @@ function Relatorios() {
           ))}
           {list.length === 0 && (
             <p className="surface p-4 text-sm text-muted-foreground">Sem atendimentos no período.</p>
+          )}
+        </TabsContent>
+
+        <TabsContent value="equipamentos" className="space-y-3 pt-4">
+          <p className="text-xs text-muted-foreground">
+            Histórico completo da máquina: transferências de cliente, atendimentos e o técnico responsável.
+            Este relatório não usa o filtro de período acima.
+          </p>
+          <Input
+            placeholder="Buscar por série, marca, modelo ou cliente atual"
+            value={equipTerm}
+            onChange={(e) => setEquipTerm(e.target.value)}
+          />
+          <div className="space-y-2">
+            {filteredEquipments.map((eq) => {
+              const current = (eq.customers as { name: string } | null)?.name ?? "Sem cliente";
+              const selected = selectedEquipId === eq.id;
+              return (
+                <button
+                  key={eq.id}
+                  type="button"
+                  className={`surface w-full p-3 text-left text-sm ${selected ? "ring-2 ring-primary" : ""}`}
+                  onClick={() => setSelectedEquipId(selected ? null : eq.id)}
+                >
+                  <p className="font-medium">
+                    {eq.type} {eq.brand} {eq.model}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Série {eq.serial_number || "sem série"} · atual: {current}
+                  </p>
+                </button>
+              );
+            })}
+            {filteredEquipments.length === 0 && (
+              <p className="surface p-4 text-sm text-muted-foreground">Nenhum equipamento encontrado.</p>
+            )}
+          </div>
+          {selectedEquip && (
+            <div className="surface space-y-3 p-4">
+              <h3 className="font-display uppercase">
+                Ficha de {selectedEquip.type} {selectedEquip.brand} {selectedEquip.model}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Série {selectedEquip.serial_number || "sem série"} · cliente atual:{" "}
+                {(selectedEquip.customers as { name: string } | null)?.name ?? "—"}
+              </p>
+              <EquipmentLifeSheet equipmentId={selectedEquip.id} />
+            </div>
           )}
         </TabsContent>
       </Tabs>

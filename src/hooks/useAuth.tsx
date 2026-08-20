@@ -8,6 +8,7 @@ export type SessionInfo = {
   email: string | null;
   fullName: string;
   role: AppRole;
+  active: boolean;
   companyId: string | null;
   company: {
     id: string;
@@ -44,6 +45,7 @@ export async function fetchSessionInfo(): Promise<SessionInfo | null> {
     email: user.email ?? null,
     fullName: profile?.full_name || user.email || "Usuário",
     role,
+    active: profile?.active ?? true,
     companyId: profile?.company_id ?? null,
     company,
   };

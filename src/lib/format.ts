@@ -14,12 +14,30 @@ export const minutesLabel = (min?: number | null) => {
   return h > 0 ? `${h}h ${m}min` : `${m}min`;
 };
 
-export const todayISO = () => new Date().toISOString().slice(0, 10);
+const toISODate = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+export const todayISO = () => toISODate(new Date());
 
 export const addDaysISO = (days: number) => {
   const d = new Date();
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return toISODate(d);
+};
+
+export const weekRangeISO = () => {
+  const now = new Date();
+  const day = now.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + mondayOffset);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return { start: toISODate(monday), end: toISODate(sunday) };
 };
 
 export const STATUS_LABEL: Record<string, string> = {

@@ -1,45 +1,83 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
-import { KIND_LABEL, STATUS_LABEL, dateBR, todayISO } from "@/lib/format";
+import { KIND_LABEL, STATUS_LABEL, addDaysISO, dateBR, todayISO, weekRangeISO } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/tecnico/")({
   component: TecnicoRota,
 });
 
+type Period = "hoje" | "amanha" | "semana";
+
 function TecnicoRota() {
   const { data: session } = useAuth();
   const userId = session?.userId ?? null;
+  const [period, setPeriod] = useState<Period>("hoje");
+  const today = todayISO();
+  const tomorrow = addDaysISO(1);
+  const week = weekRangeISO();
 
   const { data: orders } = useQuery({
-    queryKey: ["tecnico-hoje", userId],
+    queryKey: ["tecnico-rota", userId, period],
     enabled: !!userId,
     refetchInterval: 30_000,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("work_orders")
         .select("*, customers(name,address,district,city,state)")
         .eq("technician_id", userId!)
-        .gte("scheduled_date", todayISO())
         .neq("status", "concluido")
         .order("scheduled_date")
         .order("position");
+
+      if (period === "hoje") query = query.eq("scheduled_date", today);
+      if (period === "amanha") query = query.eq("scheduled_date", tomorrow);
+      if (period === "semana") query = query.gte("scheduled_date", week.start).lte("scheduled_date", week.end);
+
+      const { data, error } = await query;
       if (error) throw error;
       return data ?? [];
     },
   });
 
   const list = orders ?? [];
+  const title = period === "hoje" ? "Rota de hoje" : period === "amanha" ? "Rota de amanhã" : "Rota da semana";
+  const subtitle =
+    period === "semana"
+      ? `${dateBR(week.start)} a ${dateBR(week.end)}`
+      : dateBR(period === "hoje" ? today : tomorrow);
 
   return (
     <div className="space-y-4">
+      <div className="flex gap-2">
+        {(
+          [
+            ["hoje", "Hoje"],
+            ["amanha", "Amanhã"],
+            ["semana", "Semana"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setPeriod(value)}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase ${
+              period === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div>
-        <h2 className="font-display text-lg uppercase">Rota de hoje</h2>
+        <h2 className="font-display text-lg uppercase">{title}</h2>
         <p className="text-sm text-muted-foreground">
-          {dateBR(todayISO())} · {list.length} atendimento(s) em aberto
+          {subtitle} · {list.length} atendimento(s) em aberto
         </p>
       </div>
 

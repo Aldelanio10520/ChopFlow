@@ -42,6 +42,7 @@ function AdminPanel() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pix, setPix] = useState({ pix_key: "", pix_name: "", pix_city: "" });
+  const [billingFilter, setBillingFilter] = useState<"todas" | "devedoras" | "a_vencer" | "em_dia">("todas");
 
   useEffect(() => {
     if (!isLoading && session && session.role !== "super_admin") {
@@ -138,7 +139,11 @@ function AdminPanel() {
   };
 
   const savePix = async () => {
-    const { error } = await supabase.from("app_settings").update(pix).eq("id", true);
+    const { error } = await supabase.from("app_settings").update({
+      pix_key: pix.pix_key.trim(),
+      pix_name: pix.pix_name.trim(),
+      pix_city: pix.pix_city.trim(),
+    }).eq("id", true);
     if (error) {
       toast.error(error.message);
       return;
@@ -148,9 +153,19 @@ function AdminPanel() {
   };
 
   const list = companies ?? [];
+  const withBilling = list.map((company) => {
+    const due = new Date(`${company.next_due_date}T12:00:00`);
+    const days = Math.ceil((due.getTime() - Date.now()) / 86_400_000);
+    const bucket =
+      company.status === "bloqueada" || days < 0 ? "devedoras" : days <= 7 ? "a_vencer" : "em_dia";
+    return { company, days, bucket };
+  });
+  const visible = withBilling.filter((row) => billingFilter === "todas" || row.bucket === billingFilter);
   const revenue = list
     .filter((c) => c.status === "ativa")
     .reduce((sum, c) => sum + Number(c.monthly_fee), 0);
+  const overdueCount = withBilling.filter((row) => row.bucket === "devedoras").length;
+  const soonCount = withBilling.filter((row) => row.bucket === "a_vencer").length;
 
   return (
     <AppShell title="Super Admin" subtitle="Gestão da plataforma" nav={[]}>
@@ -165,7 +180,7 @@ function AdminPanel() {
         </TabsList>
 
         <TabsContent value="empresas" className="space-y-4 pt-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="surface p-4">
               <p className="font-display text-2xl font-bold">{list.length}</p>
               <p className="text-xs text-muted-foreground">Empresas cadastradas</p>
@@ -174,6 +189,34 @@ function AdminPanel() {
               <p className="font-display text-2xl font-bold">{brl(revenue)}</p>
               <p className="text-xs text-muted-foreground">Receita mensal ativa</p>
             </div>
+            <div className="surface p-4">
+              <p className="font-display text-2xl font-bold text-destructive">{overdueCount}</p>
+              <p className="text-xs text-muted-foreground">Devedoras / vencidas</p>
+            </div>
+            <div className="surface p-4">
+              <p className="font-display text-2xl font-bold text-warning">{soonCount}</p>
+              <p className="text-xs text-muted-foreground">Vencem em 7 dias</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ["todas", "Todas"],
+                ["devedoras", "Devedoras"],
+                ["a_vencer", "A vencer"],
+                ["em_dia", "Em dia"],
+              ] as const
+            ).map(([value, label]) => (
+              <Button
+                key={value}
+                size="sm"
+                variant={billingFilter === value ? "default" : "secondary"}
+                onClick={() => setBillingFilter(value)}
+              >
+                {label}
+              </Button>
+            ))}
           </div>
 
           <Dialog open={open} onOpenChange={setOpen}>
@@ -216,10 +259,19 @@ function AdminPanel() {
           </Dialog>
 
           <div className="space-y-3">
-            {list.map((company) => {
+            {visible.map(({ company, days, bucket }) => {
               const managers = (company.profiles as Array<{ full_name: string; email: string | null }>) ?? [];
               return (
-                <div key={company.id} className="surface space-y-3 p-4">
+                <div
+                  key={company.id}
+                  className={`surface space-y-3 p-4 ${
+                    bucket === "devedoras"
+                      ? "border-destructive/60"
+                      : bucket === "a_vencer"
+                        ? "border-warning/60"
+                        : ""
+                  }`}
+                >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="flex items-center gap-2 font-display text-lg uppercase">
@@ -229,9 +281,14 @@ function AdminPanel() {
                         {company.document || "Sem CNPJ"} · {managers.length} usuário(s)
                       </p>
                     </div>
-                    <Badge variant={company.status === "ativa" ? "default" : "destructive"}>
-                      {company.status === "ativa" ? "Ativa" : "Bloqueada"}
-                    </Badge>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant={company.status === "ativa" ? "default" : "destructive"}>
+                        {company.status === "ativa" ? "Ativa" : "Bloqueada"}
+                      </Badge>
+                      {bucket === "devedoras" && <Badge variant="destructive">Devedora</Badge>}
+                      {bucket === "a_vencer" && <Badge variant="secondary">Vence em {days}d</Badge>}
+                      {bucket === "em_dia" && <Badge variant="secondary">Em dia</Badge>}
+                    </div>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {brl(Number(company.monthly_fee))} · vence {dateBR(company.next_due_date)}
@@ -281,8 +338,8 @@ function AdminPanel() {
                 </div>
               );
             })}
-            {list.length === 0 && (
-              <p className="surface p-4 text-sm text-muted-foreground">Nenhuma empresa cadastrada ainda.</p>
+            {visible.length === 0 && (
+              <p className="surface p-4 text-sm text-muted-foreground">Nenhuma empresa neste filtro.</p>
             )}
           </div>
         </TabsContent>

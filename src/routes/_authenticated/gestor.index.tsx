@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { STATUS_LABEL, KIND_LABEL, dateTimeBR, minutesLabel, todayISO } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/gestor/")({
   component: Painel,
@@ -22,7 +23,7 @@ function Painel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("work_orders")
-        .select("*, customers(name), profiles:technician_id(full_name)")
+        .select("*, customers(name), profiles!technician_id(full_name)")
         .order("scheduled_date", { ascending: false })
         .limit(200);
       if (error) throw error;
@@ -34,8 +35,12 @@ function Painel() {
     if (!companyId) return;
     const channel = supabase
       .channel("gestor-wo")
-      .on("postgres_changes", { event: "*", schema: "public", table: "work_orders" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "work_orders" }, (payload) => {
         queryClient.invalidateQueries({ queryKey: ["gestor-orders"] });
+        const next = payload.new as { status?: string; company_id?: string } | null;
+        if (payload.eventType === "UPDATE" && next?.status) {
+          toast.message(`Técnico atualizou uma OS: ${STATUS_LABEL[next.status] ?? next.status}`);
+        }
       })
       .subscribe();
     return () => {
@@ -80,7 +85,8 @@ function Painel() {
         </div>
         {list.length === 0 && (
           <p className="surface p-4 text-sm text-muted-foreground">
-            Nenhuma ordem de serviço cadastrada. Comece cadastrando clientes e criando uma rota.
+            Nenhuma ordem de serviço ainda. Em Rotas, crie a rota e clique em “Adicionar atendimento”
+            para ela aparecer aqui e no app do técnico.
           </p>
         )}
         <div className="space-y-2">

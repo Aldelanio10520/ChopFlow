@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+chopeirasimport { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Beer, Route as RouteIcon, BarChart3, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ function Index() {
         <section className="space-y-5">
           <h1 className="font-display text-4xl font-bold uppercase leading-tight sm:text-5xl">
             Ordens de serviço para{" "}
-            <span className="text-primary">chopeiras e refrigeração</span>
+            <span className="text-primary">Climatização e refrigeração</span>
           </h1>
           <p className="text-base text-muted-foreground">
             Planeje rotas, acompanhe cada técnico em tempo real, registre equipamentos e peças no

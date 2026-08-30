@@ -7,13 +7,13 @@ import { useAuth, homeForRole } from "@/hooks/useAuth";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ChopFlow — Ordens de serviço para chopeiras e refrigeração" },
+      { title: "ChopFlow — Ordens de serviço para climatização e refrigeração" },
       {
         name: "description",
         content:
           "App instalável no celular para gestão de ordens de serviço, rotas de técnicos e manutenção de chopeiras, freezers e visacoolers.",
       },
-      { property: "og:title", content: "ChopFlow — Ordens de serviço para chopeiras e refrigeração" },
+      { property: "og:title", content: "ChopFlow — Ordens de serviço para climatização e refrigeração" },
       {
         property: "og:description",
         content:

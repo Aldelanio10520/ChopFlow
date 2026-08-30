@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, type ComponentProps } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { MapPin, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { MapPin, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -89,6 +89,81 @@ function CustomerHistory({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function CustomerContactEditor({
+  customerId,
+  companyId,
+  contactName,
+  phone,
+  onSaved,
+}: {
+  customerId: string;
+  companyId: string;
+  contactName: string | null;
+  phone: string | null;
+  onSaved: () => Promise<void>;
+}) {
+  const [name, setName] = useState(contactName ?? "");
+  const [tel, setTel] = useState(phone ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const saveContact = async () => {
+    const parsed = customerSchema.pick({ contact_name: true, phone: true }).safeParse({
+      contact_name: name,
+      phone: tel,
+    });
+    if (!parsed.success) {
+      toast.error("Revise o nome do responsável e o telefone.");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase
+      .from("customers")
+      .update({
+        contact_name: parsed.data.contact_name || null,
+        phone: parsed.data.phone || null,
+      })
+      .eq("id", customerId)
+      .eq("company_id", companyId);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Dados de contato atualizados.");
+    await onSaved();
+  };
+
+  return (
+    <div className="space-y-3 rounded-md border border-border p-3">
+      <p className="text-xs font-semibold uppercase text-muted-foreground">Responsável e contato</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor={`contact-${customerId}`}>Nome do responsável</Label>
+          <Input
+            id={`contact-${customerId}`}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Quem atende no local"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`phone-${customerId}`}>Telefone / WhatsApp</Label>
+          <Input
+            id={`phone-${customerId}`}
+            value={tel}
+            onChange={(e) => setTel(e.target.value)}
+            placeholder="(00) 00000-0000"
+            inputMode="tel"
+          />
+        </div>
+      </div>
+      <Button type="button" size="sm" onClick={() => void saveContact()} disabled={saving}>
+        <Save className="mr-1 h-4 w-4" /> {saving ? "Salvando..." : "Salvar contato"}
+      </Button>
     </div>
   );
 }
@@ -274,7 +349,15 @@ function Clientes() {
             </AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <p className="text-sm text-muted-foreground">{fullAddress(customer) || "Sem endereço"}</p>
-              {customer.phone && <p className="text-sm text-muted-foreground">Tel: {customer.phone}</p>}
+              {companyId && (
+                <CustomerContactEditor
+                  customerId={customer.id}
+                  companyId={companyId}
+                  contactName={customer.contact_name}
+                  phone={customer.phone}
+                  onSaved={refreshCustomers}
+                />
+              )}
               <div className="space-y-2">
                 {(customer.equipments as Array<Record<string, string | number | null>>).map((eq) => {
                   const destinations = activeCustomers.filter((item) => item.id !== customer.id);

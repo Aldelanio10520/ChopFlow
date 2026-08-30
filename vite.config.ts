@@ -47,9 +47,11 @@ export default defineConfig({
   },
   plugins: [supabaseEnvAlias()],
   vite: {
-    ssr: {
-      noExternal: true,
-    },
+    // Vite 8 rejects `noExternal: false` (only true | string[]). Omit it in
+    // `vite dev` so CJS deps stay external; otherwise the SSR runner crashes
+    // with `ReferenceError: module is not defined` and the page never loads.
+    // Keep bundling everything on production/Vercel builds.
+    ...(process.argv.includes("build") ? { ssr: { noExternal: true as const } } : {}),
     build: {
       target: "es2022",
     },
